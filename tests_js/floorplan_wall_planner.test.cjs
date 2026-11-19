@@ -74,3 +74,50 @@ test('segments in reverse direction normalize rectangle start coordinates', () =
         { x_position: 2, y_position: 5, width: 5, height: 1 }
     ]);
 });
+
+test('drag endpoint snaps onto a wall cell one grid cell away', () => {
+    const existing = [wall(8, 3, 2, 1)];
+    assert.deepEqual(
+        planner.snapToWall({ x: 7, y: 3 }, { x: 1, y: 3 }, existing),
+        { x: 8, y: 3 }
+    );
+    const end = planner.snapToWall({ x: 7, y: 3 }, { x: 1, y: 3 }, existing);
+    const result = planner.buildPlan([{
+        from: { x: 1, y: 3 }, to: end
+    }], existing, 20, 20);
+    assert.deepEqual(result.rectangles, [
+        { x_position: 1, y_position: 3, width: 7, height: 1 }
+    ]);
+});
+
+test('a new drag can start on a nearby existing wall without leaving a gap', () => {
+    const existing = [wall(2, 4, 3, 1)];
+    const start = planner.snapStart({ x: 5, y: 4 }, existing);
+    assert.deepEqual(start, { x: 4, y: 4 });
+    const result = planner.buildPlan([{
+        from: start, to: { x: 8, y: 4 }
+    }], existing, 20, 20);
+    assert.deepEqual(result.rectangles, [
+        { x_position: 5, y_position: 4, width: 4, height: 1 }
+    ]);
+});
+
+test('snapping does not jump diagonally or over an unrelated row', () => {
+    assert.deepEqual(
+        planner.snapToWall({ x: 7, y: 3 }, { x: 1, y: 3 },
+            [wall(8, 4)], 1),
+        { x: 7, y: 3 }
+    );
+    assert.deepEqual(
+        planner.snapStart({ x: 7, y: 3 }, [wall(8, 4)], 1),
+        { x: 7, y: 3 }
+    );
+});
+
+test('snapping beyond one cell is not allowed (intentional door openings)', () => {
+    const tiles = [wall(10, 2, 1, 1)];
+    assert.deepEqual(
+        planner.snapToWall({ x: 8, y: 2 }, { x: 2, y: 2 }, tiles),
+        { x: 8, y: 2 }
+    );
+});
