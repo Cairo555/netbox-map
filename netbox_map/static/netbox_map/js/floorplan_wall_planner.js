@@ -44,6 +44,24 @@
         return { walls: walls, blocked: blocked };
     }
 
+    /** Snap a new wall start to a neighbouring saved wall (one grid cell). */
+    function snapStart(point, tiles, tolerance) {
+        var limit = tolerance === undefined ? 1 : tolerance;
+        var best = null;
+        var bestDistance = limit + 1;
+        (tiles || []).forEach(function(tile) {
+            if (tile.type !== 'wall') return;
+            var x = Math.max(tile.x, Math.min(point.x, tile.x + tile.w - 1));
+            var y = Math.max(tile.y, Math.min(point.y, tile.y + tile.h - 1));
+            var distance = Math.abs(point.x - x) + Math.abs(point.y - y);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = { x: x, y: y };
+            }
+        });
+        return best && bestDistance <= limit ? best : point;
+    }
+
     /**
      * Snap the free endpoint of a drag onto an existing wall cell on the
      * same orthogonal axis. A one-cell mouse miss is common at reduced
@@ -136,5 +154,5 @@
         return { rectangles: rectangles, cells: newCells, conflicts: [] };
     }
 
-    return { lineCells: lineCells, occupiedCells: occupiedCells, snapToWall: snapToWall, buildPlan: buildPlan };
+    return { lineCells: lineCells, occupiedCells: occupiedCells, snapStart: snapStart, snapToWall: snapToWall, buildPlan: buildPlan };
 });
