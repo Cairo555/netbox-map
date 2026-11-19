@@ -76,6 +76,29 @@ class FloorPlanTileTest(TestCase):
         with self.assertRaises(Exception):
             FloorPlanTile.objects.create(floorplan=self.floorplan, x_position=1, y_position=1)
 
+    def test_blank_wall_label_stays_blank_in_floorplan_serialization(self):
+        from netbox_map.views import _serialize_tile
+
+        wall = FloorPlanTile.objects.create(
+            floorplan=self.floorplan, x_position=8, y_position=8,
+            tile_type='wall', label='Temporary label'
+        )
+        wall.label = ''
+        wall.save(update_fields=['label'])
+        wall.refresh_from_db()
+
+        self.assertEqual(wall.label, '')
+        self.assertEqual(_serialize_tile(wall)['label'], '')
+
+    def test_non_wall_label_preserves_default_fallback(self):
+        from netbox_map.views import _serialize_tile
+
+        rack = FloorPlanTile.objects.create(
+            floorplan=self.floorplan, x_position=9, y_position=9,
+            tile_type='rack', label=''
+        )
+        self.assertEqual(_serialize_tile(rack)['label'], rack.display_label)
+
     def test_custom_type_validation(self):
         tile = FloorPlanTile(floorplan=self.floorplan, x_position=5, y_position=5, tile_type='custom_nonexistent')
         with self.assertRaises(ValidationError):
