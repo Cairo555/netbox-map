@@ -8,16 +8,23 @@ uses **ordinary FloorPlanTile records**. No database migration is required.
 1. Open a floorplan in **Edit Mode**.
 2. Select **Draw Walls**. The regular double-click/drag-to-move behavior is
    suspended while this tool is active.
-3. Click and drag to draw a horizontal or vertical wall. The dominant mouse
-   direction determines the axis; the path snaps to grid cells.
-4. Release to stage that segment. Drag from its last endpoint to continue,
-   or start elsewhere for a separate line.
+3. Click and drag to draw a horizontal or vertical wall. **While the
+   mouse moves, the wall is rendered immediately in its finished solid wall
+   color**, not merely a translucent highlight. The dominant mouse direction
+   determines the axis and the path snaps to grid cells.
+4. Release to stage the segment, still shown as a solid wall. Drag from
+   its last endpoint to continue, or start elsewhere for a separate line.
+   A one-cell near miss now snaps onto the last endpoint or an existing
+   orthogonally aligned wall, closing tiny placement gaps. Hold **Alt** during
+   a drag to deliberately bypass snapping (for a planned opening).
 5. Repeat, then click **Confirm** to save the entire drawing.
 
 - **Undo** (or Ctrl/Cmd+Z) removes the last staged segment.
 - **Cancel** (or Escape) discards *unsaved* segments.
-- Green overlay = staged wall cells, blue = current drag preview,
-  red = conflicting cells.
+- Both staged and currently drawn wall cells use the **same solid wall color**
+  as saved walls. Only conflicts are marked red.
+- Adjacent rendered walls slightly overlap on the canvas to eliminate
+  fractional-pixel seams from zooming; this changes visuals, not the data.
 - Existing walls are reused at T-junctions/intersections. No duplicate records
   are created at shared coordinates.
 - Racks, devices and other non-wall tiles remain protected from overlap,
@@ -39,7 +46,7 @@ wall's label persists visually after a page reload.
 Pure JavaScript geometry and syntax checks run in GitHub Actions:
 
 ```bash
-node --test tests_js/floorplan_wall_planner.test.cjs
+node --test tests_js/*.test.cjs
 node --check netbox_map/static/netbox_map/js/floorplan_wall_drawing.js
 ```
 
