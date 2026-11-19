@@ -187,6 +187,17 @@
 
     // ─── Tile Rendering ──────────────────────────────────────────
 
+    /**
+     * Draw connected wall geometry seamlessly.
+     * Canvas coordinates are often fractional after zoom and pan, so adjacent
+     * rectangles otherwise show tiny antialias seams. Overpaint by <1 CSS px.
+     */
+    Renderer.prototype._fillWallRect = function(x, y, w, h, color) {
+        var bleed = 0.85 / Math.max(this.state.zoom, 0.15);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x - bleed, y - bleed, w + 2 * bleed, h + 2 * bleed);
+    };
+
     /** Draw a single tile on the canvas (world space). */
     Renderer.prototype.drawTile = function(tile) {
         var s = this.state;
@@ -205,10 +216,15 @@
 
         var fillColor = this._getTileFillColor(tile);
 
-        // Fill
-        this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
-        ctx.fillStyle = fillColor;
-        ctx.fill();
+        // Wall tiles must meet edge-to-edge even when the canvas is zoomed.
+        // Ordinary tiles retain their original inset/rounded appearance.
+        if (tile.type === 'wall') {
+            this._fillWallRect(x, y, w, h, fillColor);
+        } else {
+            this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+        }
 
         // Border (selected = cyan glow, normal = subtle)
         var isSelected = s.selectedTile && s.selectedTile.id === tile.id;
@@ -224,8 +240,9 @@
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
         }
-        // Suppress internal borders between adjacent wall segments.
-        if (tile.type !== 'wall' || isSelected) {
+        // Never stroke wall tiles: selected/internal edges otherwise appear
+        // as cracks between perfectly adjacent wall cells.
+        if (tile.type !== 'wall') {
             this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
             ctx.stroke();
         }
@@ -432,24 +449,31 @@
 
     // ─── Full Render ─────────────────────────────────────────────
 
-    /** Preview uncommitted walls without changing the saved floor plan. */
+    /**
+     * Draw staged and actively dragged wall cells as REAL walls, not a
+     * translucent grid overlay. Every mouse move triggers a re-render,
+     * so the user sees the finished wall shape before pressing Confirm.
+     */
     Renderer.prototype.drawWallOverlay = function() {
         var overlay = this.state.wallDrawingOverlay;
         if (!overlay) return;
-        var ctx = this.ctx;
+        var self = this;
         var size = this.state.tileSize;
-        function draw(cells, fill) {
-            ctx.fillStyle = fill;
+        var wallColor = this._getTileFillColor({ type: 'wall', status: 'active' });
+        function paint(cells, color) {
             for (var i = 0; i < cells.length; i++) {
                 var p = cells[i];
-                ctx.fillRect(p.x * size + 1, p.y * size + 1, size - 2, size - 2);
+                if (p.x < 0 || p.y < 0 ||
+                    p.x >= self.state.gridWidth || p.y >= self.state.gridHeight) continue;
+                self._fillWallRect(p.x * size, p.y * size, size, size, color);
             }
         }
-        ctx.save();
-        draw(overlay.cells, 'rgba(16, 185, 129, 0.58)');
-        draw(overlay.preview, 'rgba(56, 189, 248, 0.58)');
-        draw(overlay.blocked, 'rgba(239, 68, 68, 0.8)');
-        ctx.restore();
+        this.ctx.save();
+        paint(overlay.cells, wallColor);
+        paint(overlay.preview, wallColor);
+        // Only collisions remain visibly red, for immediate feedback.
+        paint(overlay.blocked, 'rgba(239, 68, 68, 0.9)');
+        this.ctx.restore();
     };
 
     /** Full canvas render: clear → background → grid → FOV → tiles → zoom indicator. */
