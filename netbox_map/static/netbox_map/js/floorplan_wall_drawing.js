@@ -68,7 +68,7 @@
                 (pending.conflicts.length
                     ? 'A wall overlaps another object. Undo the last segment.'
                     : strokes.length + ' segment(s) queued, ' + pending.rectangles.length +
-                      ' tile(s) to save. Drag from the last endpoint to continue.');
+                      ' tile(s) to save. Walls appear immediately; Confirm saves them. Hold Alt to bypass snapping.');
         }
     }
 
@@ -114,7 +114,8 @@
         // Clicking an endpoint again continues the connected wall. Clicking
         // anywhere else starts another chain in the same pending drawing.
         from = lastEnd && Math.abs(clicked.x - lastEnd.x) <= 1 &&
-            Math.abs(clicked.y - lastEnd.y) <= 1 ? lastEnd : clicked;
+            Math.abs(clicked.y - lastEnd.y) <= 1 ? lastEnd :
+                (e.altKey ? clicked : Planner.snapStart(clicked, state.tiles, 1));
         to = from;
         drawing = true;
         updateOverlay();
@@ -124,7 +125,8 @@
         if (!state.wallDrawingMode || !drawing) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        to = clamp(gridPoint(e));
+        var raw = clamp(gridPoint(e));
+        to = e.altKey ? raw : Planner.snapToWall(raw, from, state.tiles, 1);
         updateOverlay();
     }, true);
 
@@ -133,7 +135,8 @@
         e.preventDefault();
         e.stopImmediatePropagation();
         drawing = false;
-        to = clamp(gridPoint(e));
+        var raw = clamp(gridPoint(e));
+        to = e.altKey ? raw : Planner.snapToWall(raw, from, state.tiles, 1);
         var cells = Planner.lineCells(from, to);
         var endpoint = cells[cells.length - 1];
         var candidate = strokes.concat([{ from: from, to: endpoint }]);
