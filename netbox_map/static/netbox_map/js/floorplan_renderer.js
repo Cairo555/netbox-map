@@ -199,8 +199,9 @@
         // Reduced from gap=2,radius=4 — earlier values left a noticeable
         // moat of unused space between adjacent tiles and made small tiles
         // look more like rounded chips than grid cells.
-        var gap = 1;
-        var radius = 2;
+        // Adjacent wall rectangles should appear as one uninterrupted wall.
+        var gap = tile.type === 'wall' ? 0 : 1;
+        var radius = tile.type === 'wall' ? 0 : 2;
 
         var fillColor = this._getTileFillColor(tile);
 
@@ -223,8 +224,11 @@
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
         }
-        this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
-        ctx.stroke();
+        // Suppress internal borders between adjacent wall segments.
+        if (tile.type !== 'wall' || isSelected) {
+            this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
+            ctx.stroke();
+        }
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
 
