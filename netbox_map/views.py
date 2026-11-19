@@ -1251,7 +1251,10 @@ def _serialize_tile(tile):
         'y': tile.y_position,
         'w': tile.width,
         'h': tile.height,
-        'label': tile.display_label,
+        # Empty wall labels must stay empty in floorplan edit/view mode.
+        # display_label falls back to "Wall", which made cleared labels
+        # reappear after refreshing the page.
+        'label': tile.label if tile.tile_type == 'wall' else tile.display_label,
         'type': tile.tile_type,
         'status': tile.status,
         'orientation': tile.orientation,

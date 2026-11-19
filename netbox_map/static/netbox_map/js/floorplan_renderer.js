@@ -187,6 +187,17 @@
 
     // ─── Tile Rendering ──────────────────────────────────────────
 
+    /**
+     * Draw connected wall geometry seamlessly.
+     * Canvas coordinates are often fractional after zoom and pan, so adjacent
+     * rectangles otherwise show tiny antialias seams. Overpaint by <1 CSS px.
+     */
+    Renderer.prototype._fillWallRect = function(x, y, w, h, color) {
+        var bleed = 0.85 / Math.max(this.state.zoom, 0.15);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x - bleed, y - bleed, w + 2 * bleed, h + 2 * bleed);
+    };
+
     /** Draw a single tile on the canvas (world space). */
     Renderer.prototype.drawTile = function(tile) {
         var s = this.state;
@@ -199,15 +210,21 @@
         // Reduced from gap=2,radius=4 — earlier values left a noticeable
         // moat of unused space between adjacent tiles and made small tiles
         // look more like rounded chips than grid cells.
-        var gap = 1;
-        var radius = 2;
+        // Adjacent wall rectangles should appear as one uninterrupted wall.
+        var gap = tile.type === 'wall' ? 0 : 1;
+        var radius = tile.type === 'wall' ? 0 : 2;
 
         var fillColor = this._getTileFillColor(tile);
 
-        // Fill
-        this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
-        ctx.fillStyle = fillColor;
-        ctx.fill();
+        // Wall tiles must meet edge-to-edge even when the canvas is zoomed.
+        // Ordinary tiles retain their original inset/rounded appearance.
+        if (tile.type === 'wall') {
+            this._fillWallRect(x, y, w, h, fillColor);
+        } else {
+            this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+        }
 
         // Border (selected = cyan glow, normal = subtle)
         var isSelected = s.selectedTile && s.selectedTile.id === tile.id;
@@ -223,8 +240,12 @@
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
         }
-        this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
-        ctx.stroke();
+        // Never stroke wall tiles: selected/internal edges otherwise appear
+        // as cracks between perfectly adjacent wall cells.
+        if (tile.type !== 'wall') {
+            this._roundRect(x + gap, y + gap, w - gap * 2, h - gap * 2, radius);
+            ctx.stroke();
+        }
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
 
@@ -428,6 +449,33 @@
 
     // ─── Full Render ─────────────────────────────────────────────
 
+    /**
+     * Draw staged and actively dragged wall cells as REAL walls, not a
+     * translucent grid overlay. Every mouse move triggers a re-render,
+     * so the user sees the finished wall shape before pressing Confirm.
+     */
+    Renderer.prototype.drawWallOverlay = function() {
+        var overlay = this.state.wallDrawingOverlay;
+        if (!overlay) return;
+        var self = this;
+        var size = this.state.tileSize;
+        var wallColor = this._getTileFillColor({ type: 'wall', status: 'active' });
+        function paint(cells, color) {
+            for (var i = 0; i < cells.length; i++) {
+                var p = cells[i];
+                if (p.x < 0 || p.y < 0 ||
+                    p.x >= self.state.gridWidth || p.y >= self.state.gridHeight) continue;
+                self._fillWallRect(p.x * size, p.y * size, size, size, color);
+            }
+        }
+        this.ctx.save();
+        paint(overlay.cells, wallColor);
+        paint(overlay.preview, wallColor);
+        // Only collisions remain visibly red, for immediate feedback.
+        paint(overlay.blocked, 'rgba(239, 68, 68, 0.9)');
+        this.ctx.restore();
+    };
+
     /** Full canvas render: clear → background → grid → FOV → tiles → zoom indicator. */
     Renderer.prototype.render = function() {
         var s = this.state;
@@ -470,6 +518,9 @@
                 this.drawTile(s.tiles[i]);
             }
         }
+
+        // Uncommitted connected-wall drawing preview (world space).
+        this.drawWallOverlay();
 
         // Reset transform for UI overlay
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
