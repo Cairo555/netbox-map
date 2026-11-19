@@ -44,6 +44,43 @@
         return { walls: walls, blocked: blocked };
     }
 
+    /**
+     * Snap the free endpoint of a drag onto an existing wall cell on the
+     * same orthogonal axis. A one-cell mouse miss is common at reduced
+     * zoom, but should not produce a one-cell gap in a connected wall.
+     * Never bridges a rack or changes existing tiles; normal collision
+     * validation still applies to the resulting segment.
+     *
+     * Alt-drag may be used by the editor to skip snapping deliberately.
+     */
+    function snapToWall(point, anchor, tiles, tolerance) {
+        if (!anchor || !tiles || !tiles.length) return point;
+        var horizontal = Math.abs(point.x - anchor.x) >= Math.abs(point.y - anchor.y);
+        var best = null;
+        var bestDistance = (tolerance === undefined ? 1 : tolerance) + 1;
+        tiles.forEach(function(tile) {
+            if (tile.type !== 'wall') return;
+            if (horizontal) {
+                if (anchor.y < tile.y || anchor.y >= tile.y + tile.h) return;
+                var nearestX = Math.max(tile.x, Math.min(point.x, tile.x + tile.w - 1));
+                var distanceX = Math.abs(point.x - nearestX);
+                if (distanceX < bestDistance) {
+                    best = { x: nearestX, y: anchor.y };
+                    bestDistance = distanceX;
+                }
+            } else {
+                if (anchor.x < tile.x || anchor.x >= tile.x + tile.w) return;
+                var nearestY = Math.max(tile.y, Math.min(point.y, tile.y + tile.h - 1));
+                var distanceY = Math.abs(point.y - nearestY);
+                if (distanceY < bestDistance) {
+                    best = { x: anchor.x, y: nearestY };
+                    bestDistance = distanceY;
+                }
+            }
+        });
+        return best && bestDistance <= (tolerance === undefined ? 1 : tolerance) ? best : point;
+    }
+
     function buildPlan(strokes, tiles, width, height) {
         var occupied = occupiedCells(tiles);
         var conflicts = [];
@@ -99,5 +136,5 @@
         return { rectangles: rectangles, cells: newCells, conflicts: [] };
     }
 
-    return { lineCells: lineCells, occupiedCells: occupiedCells, buildPlan: buildPlan };
+    return { lineCells: lineCells, occupiedCells: occupiedCells, snapToWall: snapToWall, buildPlan: buildPlan };
 });
