@@ -105,9 +105,10 @@
     // Capture before regular Interaction handlers; no tile movement or canvas
     // pan should occur when the drawing tool owns the primary mouse button.
     canvas.addEventListener('mousedown', function(e) {
-        if (!state.wallDrawingMode || saving || e.button !== 0) return;
+        if (!state.wallDrawingMode || e.button !== 0) return;
         e.preventDefault();
         e.stopImmediatePropagation();
+        if (saving) return; // Never allow regular tile dragging during a save.
         var clicked = gridPoint(e);
         if (!inBounds(clicked)) return;
         // Clicking an endpoint again continues the connected wall. Clicking
