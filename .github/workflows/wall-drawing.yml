@@ -1,0 +1,26 @@
+name: Floorplan wall drawing tests
+
+on:
+  push:
+    branches:
+      - feature/wall-drawing
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  planner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Wall planner tests
+        run: node --test tests_js/floorplan_wall_planner.test.cjs
+      - name: JavaScript syntax
+        run: |
+          node --check netbox_map/static/netbox_map/js/floorplan_wall_planner.js
+          node --check netbox_map/static/netbox_map/js/floorplan_wall_drawing.js
+          node --check netbox_map/static/netbox_map/js/floorplan_renderer.js
