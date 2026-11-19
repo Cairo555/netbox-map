@@ -428,6 +428,26 @@
 
     // ─── Full Render ─────────────────────────────────────────────
 
+    /** Preview uncommitted walls without changing the saved floor plan. */
+    Renderer.prototype.drawWallOverlay = function() {
+        var overlay = this.state.wallDrawingOverlay;
+        if (!overlay) return;
+        var ctx = this.ctx;
+        var size = this.state.tileSize;
+        function draw(cells, fill) {
+            ctx.fillStyle = fill;
+            for (var i = 0; i < cells.length; i++) {
+                var p = cells[i];
+                ctx.fillRect(p.x * size + 1, p.y * size + 1, size - 2, size - 2);
+            }
+        }
+        ctx.save();
+        draw(overlay.cells, 'rgba(16, 185, 129, 0.58)');
+        draw(overlay.preview, 'rgba(56, 189, 248, 0.58)');
+        draw(overlay.blocked, 'rgba(239, 68, 68, 0.8)');
+        ctx.restore();
+    };
+
     /** Full canvas render: clear → background → grid → FOV → tiles → zoom indicator. */
     Renderer.prototype.render = function() {
         var s = this.state;
@@ -470,6 +490,9 @@
                 this.drawTile(s.tiles[i]);
             }
         }
+
+        // Uncommitted connected-wall drawing preview (world space).
+        this.drawWallOverlay();
 
         // Reset transform for UI overlay
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
