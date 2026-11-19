@@ -94,6 +94,16 @@
       </div>
     </span>
     <div class="toolbar-divider"></div>
+    <button id="fp-wall-draw-toggle" class="btn btn-sm btn-outline-primary" type="button"
+            aria-pressed="false" title="{% trans 'Draw connected wall segments' %}">
+      <i class="mdi mdi-pencil-ruler"></i> {% trans "Draw Walls" %}
+    </button>
+    <span id="fp-wall-tools" class="d-none align-items-center gap-1">
+      <button id="fp-wall-confirm" class="btn btn-sm btn-success" type="button" disabled>{% trans "Confirm" %}</button>
+      <button id="fp-wall-undo" class="btn btn-sm btn-outline-secondary" type="button" disabled>{% trans "Undo" %}</button>
+      <button id="fp-wall-cancel" class="btn btn-sm btn-outline-danger" type="button">{% trans "Cancel" %}</button>
+      <span id="fp-wall-status" class="small text-muted" role="status" aria-live="polite"></span>
+    </span>
     <button id="delete-tile-btn" class="btn btn-sm btn-danger" disabled>
       <i class="mdi mdi-delete"></i> {% trans "Delete" %}
     </button>
@@ -426,5 +436,7 @@
   <script src="{% static 'netbox_map/js/floorplan_main.js' %}"></script>
   {% if edit_mode %}
   <script src="{% static 'netbox_map/js/floorplan_editor.js' %}"></script>
+  <script src="{% static 'netbox_map/js/floorplan_wall_planner.js' %}"></script>
+  <script src="{% static 'netbox_map/js/floorplan_wall_drawing.js' %}"></script>
   {% endif %}
 {% endblock %}
